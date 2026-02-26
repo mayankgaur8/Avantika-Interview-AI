@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User, UserRole } from './user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -69,5 +70,34 @@ export class UsersService {
   async deactivate(id: string): Promise<void> {
     await this.findById(id);
     await this.usersRepo.update(id, { isActive: false });
+  }
+
+  /** Store a hashed reset token valid for 1 hour */
+  async setResetToken(userId: string, token: string): Promise<void> {
+    const hash = await bcrypt.hash(token, 10);
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await this.usersRepo.update(userId, {
+      resetToken: hash,
+      resetTokenExpiry: expiry,
+    });
+  }
+
+  /** Validate plain token against stored hash and expiry, return user if valid */
+  async validateResetToken(email: string, token: string): Promise<User | null> {
+    const user = await this.findByEmail(email);
+    if (!user?.resetToken || !user.resetTokenExpiry) return null;
+    if (user.resetTokenExpiry < new Date()) return null;
+    const match = await bcrypt.compare(token, user.resetToken);
+    return match ? user : null;
+  }
+
+  /** Set new password and clear reset token */
+  async resetPassword(userId: string, newPassword: string): Promise<void> {
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.usersRepo.update(userId, {
+      passwordHash: hash,
+      resetToken: undefined,
+      resetTokenExpiry: undefined,
+    });
   }
 }

@@ -46,6 +46,12 @@ export class User {
   @Column({ nullable: true })
   refreshTokenHash?: string;
 
+  @Column({ nullable: true })
+  resetToken?: string;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  resetTokenExpiry?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -186,4 +186,61 @@ export class PanelMailService {
       // Don't throw — email is best-effort
     }
   }
+
+  /** Send a password-reset email with a secure link valid for 1 hour */
+  async sendPasswordReset(to: string, name: string, resetUrl: string): Promise<void> {
+    if (!this.cfg.get<string>('mail.user')) {
+      this.logger.warn(`Mail not configured — password reset URL: ${resetUrl}`);
+      return;
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/></head>
+<body style="background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:20px;">
+  <div style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;">
+    <div style="background:linear-gradient(135deg,#312e81,#1e1b4b);padding:32px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:8px;">🔐</div>
+      <h1 style="color:#e0e7ff;margin:0;font-size:22px;">Reset Your Password</h1>
+    </div>
+    <div style="padding:28px;">
+      <p style="color:#cbd5e1;font-size:15px;margin:0 0 16px;">Hi ${name},</p>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px;">
+        We received a request to reset the password for your <strong style="color:#a5b4fc;">Avantika Interview AI</strong> account.
+        Click the button below to set a new password. This link expires in <strong style="color:#f87171;">1 hour</strong>.
+      </p>
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${resetUrl}"
+           style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:0.3px;">
+          Reset Password →
+        </a>
+      </div>
+      <div style="background:#0f172a;border-radius:8px;padding:12px 16px;border:1px solid #334155;margin-bottom:20px;">
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">Or copy this link:</p>
+        <p style="color:#818cf8;font-size:12px;word-break:break-all;margin:0;">${resetUrl}</p>
+      </div>
+      <p style="color:#64748b;font-size:12px;line-height:1.5;margin:0;">
+        If you didn't request a password reset, you can safely ignore this email — your password will not change.
+      </p>
+    </div>
+    <div style="background:#0f172a;padding:16px;text-align:center;border-top:1px solid #334155;">
+      <p style="color:#475569;font-size:12px;margin:0;">Avantika Interview AI · Powered by GPT-4o</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.cfg.get<string>('mail.from'),
+        to,
+        subject: '🔐 Reset Your Avantika Interview AI Password',
+        html,
+      });
+      this.logger.log(`Password reset email sent to ${to}`);
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email to ${to}`, err);
+    }
+  }
 }

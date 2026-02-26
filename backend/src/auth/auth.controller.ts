@@ -16,7 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenDto } from './dto/auth.dto';
+import { LoginDto, RefreshTokenDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 
 @ApiTags('Auth')
@@ -101,5 +101,31 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user profile' })
   getMe(@Request() req: { user: unknown }) {
     return req.user;
+  }
+
+  /**
+   * POST /auth/forgot-password
+   * Send a password-reset email (always returns 200 — never reveals if email exists)
+   */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset email' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email).then(() => ({
+      message: 'If that email is registered, a reset link has been sent.',
+    }));
+  }
+
+  /**
+   * POST /auth/reset-password
+   * Validate reset token and set new password
+   */
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using token from email' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService
+      .resetPassword(dto.email, dto.token, dto.newPassword)
+      .then(() => ({ message: 'Password updated successfully. Please log in.' }));
   }
 }
