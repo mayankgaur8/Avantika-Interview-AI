@@ -1,0 +1,140 @@
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: aib_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_interview_bot
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Redis
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: aib_redis
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Judge0 — Code Execution Sandbox
+  # Runs submitted code in isolated containers
+  # ──────────────────────────────────────────────
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: aib_judge0
+    restart: unless-stopped
+    ports:
+      - '2358:2358'
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    environment:
+      REDIS_URL: redis://judge0-redis:6379
+      DATABASE_URL: postgres://judge0:judge0@judge0-db:5432/judge0
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: aib_judge0_workers
+    restart: unless-stopped
+    command: ['./scripts/workers']
+    privileged: true
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    environment:
+      REDIS_URL: redis://judge0-redis:6379
+      DATABASE_URL: postgres://judge0:judge0@judge0-db:5432/judge0
+
+  judge0-db:
+    image: postgres:13-alpine
+    container_name: aib_judge0_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+
+  judge0-redis:
+    image: redis:6-alpine
+    container_name: aib_judge0_redis
+    restart: unless-stopped
+    volumes:
+      - judge0_redis_data:/data
+
+  # ──────────────────────────────────────────────
+  # NestJS Backend API
+  # ──────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aib_backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      JUDGE0_API_URL: http://judge0-server:2358
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # ──────────────────────────────────────────────
+  # Next.js Frontend
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aib_frontend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  judge0_db_data:
+  judge0_redis_data:
