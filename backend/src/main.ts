@@ -13,11 +13,16 @@ async function bootstrap() {
   // Security headers
   app.use(helmet());
 
-  // CORS — allow any localhost port in development (handles Next.js fallback ports)
+  // CORS — support comma-separated list of allowed origins
   const corsOrigin = config.get<string>('cors.origin') ?? 'http://localhost:3000';
+  const allowedOrigins = corsOrigin.split(',').map((o) => o.trim());
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin) || origin === corsOrigin) {
+      if (
+        !origin ||
+        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+        allowedOrigins.includes(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

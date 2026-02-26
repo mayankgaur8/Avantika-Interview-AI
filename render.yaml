@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: avantika-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        value: https://avantikainterviewai.vercel.app
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      # Set these manually in Render dashboard:
+      # DATABASE_URL  (from Render PostgreSQL add-on)
+      # OPENAI_API_KEY
+      # MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, MAIL_FROM
+
+databases:
+  - name: avantika-db
+    databaseName: ai_interview_bot
+    user: postgres
