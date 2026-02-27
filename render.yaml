@@ -48,9 +48,10 @@ services:
     name: avantika-redis
     plan: free
     maxmemoryPolicy: noeviction
+    ipAllowList: []
 
 databases:
   - name: avantika-db
     databaseName: ai_interview_bot
-    user: postgres
+    user: avantika_user
     plan: free
