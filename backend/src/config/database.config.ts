@@ -13,7 +13,7 @@ export const getDatabaseConfig = (
       type: 'postgres',
       url: databaseUrl,
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-      synchronize: !isProduction,
+      synchronize: true, // TODO: revert to !isProduction after first successful deploy
       logging: !isProduction,
       ssl: isProduction ? { rejectUnauthorized: false } : false,
     };

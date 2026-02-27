@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
+        value: 10000
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -22,12 +22,35 @@ services:
         value: https://avantikainterviewai.vercel.app
       - key: OPENAI_MODEL
         value: gpt-4o
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX
+        value: 100
+      - key: DATABASE_URL
+        fromDatabase:
+          name: avantika-db
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: avantika-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: avantika-redis
+          type: redis
+          property: port
       # Set these manually in Render dashboard:
-      # DATABASE_URL  (from Render PostgreSQL add-on)
       # OPENAI_API_KEY
       # MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, MAIL_FROM
+
+  - type: redis
+    name: avantika-redis
+    plan: free
+    maxmemoryPolicy: noeviction
 
 databases:
   - name: avantika-db
     databaseName: ai_interview_bot
     user: postgres
+    plan: free
