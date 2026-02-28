@@ -17,6 +17,12 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+export enum PlanTier {
+  FREE = 'free',
+  PRO = 'pro',
+  ENTERPRISE = 'enterprise',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -42,6 +48,15 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: 'enum', enum: PlanTier, default: PlanTier.FREE })
+  plan: PlanTier;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  planExpiresAt?: Date;
+
+  @Column({ nullable: true })
+  razorpayCustomerId?: string;
 
   @Column({ nullable: true })
   refreshTokenHash?: string;

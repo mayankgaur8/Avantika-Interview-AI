@@ -86,6 +86,19 @@ export const integrityApi = {
     api.post(`/interviews/sessions/${sessionId}/integrity`, payload),
 };
 
+// ── Payments ──────────────────────────────────────────────────────
+export const paymentsApi = {
+  createOrder: (plan: string, billing: string) =>
+    api.post('/payments/create-order', { plan, billing }),
+  verifyPayment: (payload: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    plan: string;
+    billing: string;
+  }) => api.post('/payments/verify', payload),
+};
+
 // ── Panel Interview ───────────────────────────────────────────────
 export const panelApi = {
   createSession: (payload: {

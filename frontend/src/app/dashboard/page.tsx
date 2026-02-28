@@ -121,6 +121,7 @@ export default function DashboardPage() {
             { label: '🏠 Dashboard', href: '/dashboard', active: true },
             { label: '📝 My Interviews', href: '/dashboard' },
             { label: '📊 Reports', href: '/dashboard#reports' },
+            { label: '⚡ Upgrade Plan', href: '/dashboard/upgrade' },
           ].map((item) => (
             <Link
               key={item.label}
@@ -153,6 +154,22 @@ export default function DashboardPage() {
               : 'Manage templates and review candidate reports'}
           </p>
         </div>
+
+        {/* Upgrade banner for free users */}
+        {(!user?.plan || user.plan === 'free') && (
+          <div className="mb-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border border-indigo-600/30 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-semibold text-white">You're on the Free plan</span>
+              <span className="text-sm text-slate-400 ml-2">— Upgrade to unlock all interview tracks, panel mode, and more.</span>
+            </div>
+            <Link
+              href="/dashboard/upgrade"
+              className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              Upgrade →
+            </Link>
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-4 mb-8">

@@ -12,6 +12,7 @@ import { EvaluationModule } from './evaluation/evaluation.module';
 import { ReportsModule } from './reports/reports.module';
 import { IntegrityModule } from './integrity/integrity.module';
 import { PanelModule } from './panel/panel.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { PanelModule } from './panel/panel.module';
     ReportsModule,
     IntegrityModule,
     PanelModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

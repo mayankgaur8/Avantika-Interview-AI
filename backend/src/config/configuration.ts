@@ -31,6 +31,11 @@ export default () => ({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
   },
 
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || '',
+    keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+  },
+
   sandbox: {
     dockerImage: process.env.SANDBOX_IMAGE || 'judge0/judge0:latest',
     timeoutMs: parseInt(process.env.SANDBOX_TIMEOUT_MS || '10000', 10),

@@ -10,6 +10,8 @@ interface User {
   firstName: string;
   lastName: string;
   role: 'candidate' | 'recruiter' | 'admin';
+  plan: 'free' | 'pro' | 'enterprise';
+  planExpiresAt?: string;
 }
 
 interface AuthState {
