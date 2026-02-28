@@ -218,7 +218,13 @@ export default function PricingPage() {
 
               {/* CTA */}
               <Link
-                href={plan.id === 'enterprise' ? 'mailto:sales@interviewai.dev' : '/register'}
+                href={
+                  plan.id === 'free'
+                    ? '/register'
+                    : plan.id === 'enterprise'
+                    ? 'mailto:sales@interviewai.dev'
+                    : '/dashboard/upgrade'
+                }
                 className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition mb-8 block ${plan.ctaStyle}`}
               >
                 {plan.cta}

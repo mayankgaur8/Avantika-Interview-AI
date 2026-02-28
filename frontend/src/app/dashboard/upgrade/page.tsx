@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -73,10 +73,16 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 export default function UpgradePage() {
-  const { user, fetchMe } = useAuthStore();
+  const { user, isAuthenticated, fetchMe } = useAuthStore();
   const router = useRouter();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login?redirect=/dashboard/upgrade');
+    }
+  }, [isAuthenticated, router]);
 
   const handleUpgrade = async (planId: string) => {
     setLoading(planId);
