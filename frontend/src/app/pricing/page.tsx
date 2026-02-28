@@ -2,7 +2,33 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
+import { paymentsApi } from '@/lib/api';
+
+// INR amounts for Razorpay (shown alongside USD on cards)
+const PLAN_INR: Record<string, Record<string, number>> = {
+  pro:        { monthly: 1599, yearly: 1199 },
+  enterprise: { monthly: 6599, yearly: 4999 },
+};
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (document.getElementById('rzp-script')) { resolve(true); return; }
+    const s = document.createElement('script');
+    s.id = 'rzp-script';
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
 
 // ── Plan definitions ──────────────────────────────────────────────
 
@@ -123,6 +149,47 @@ const FAQS = [
 export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handlePaidPlan = async (planId: string) => {
+    if (planId === 'free') { router.push('/register'); return; }
+    if (planId === 'enterprise') { window.location.href = 'mailto:sales@interviewai.dev'; return; }
+    setPaying(planId);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) { alert('Failed to load payment gateway. Please try again.'); setPaying(null); return; }
+
+      const { data: order } = await paymentsApi.createOrder(planId, billing);
+
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Avantika Interview AI',
+        description: `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan — ${billing}`,
+        order_id: order.orderId,
+        theme: { color: '#4f46e5' },
+        handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          // Store payment proof, then send user to register
+          sessionStorage.setItem('pending_payment', JSON.stringify({
+            plan: planId,
+            billing,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          }));
+          router.push(`/register?plan=${planId}`);
+        },
+        modal: { ondismiss: () => setPaying(null) },
+      };
+
+      new window.Razorpay(options).open();
+    } catch {
+      alert('Failed to initiate payment. Please try again.');
+      setPaying(null);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white">
@@ -217,16 +284,13 @@ export default function PricingPage() {
               </div>
 
               {/* CTA */}
-              <Link
-                href={
-                  plan.id === 'enterprise'
-                    ? 'mailto:sales@interviewai.dev'
-                    : `/register?plan=${plan.id}`
-                }
-                className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition mb-8 block ${plan.ctaStyle}`}
+              <button
+                onClick={() => handlePaidPlan(plan.id)}
+                disabled={paying === plan.id}
+                className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition mb-8 block ${plan.ctaStyle} disabled:opacity-60 disabled:cursor-wait`}
               >
-                {plan.cta}
-              </Link>
+                {paying === plan.id ? 'Opening payment...' : plan.cta}
+              </button>
 
               {/* Features */}
               <div className="flex-1">

@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { authApi } from '@/lib/api';
+import { authApi, paymentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Logo } from '@/components/Logo';
 
@@ -24,7 +24,6 @@ type RegisterForm = z.infer<typeof schema>;
 function RegisterForm() {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') ?? 'candidate';
-  const plan = searchParams.get('plan');
   const { fetchMe } = useAuthStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,8 +41,23 @@ function RegisterForm() {
       localStorage.setItem('accessToken', res.data.accessToken);
       localStorage.setItem('refreshToken', res.data.refreshToken);
       await fetchMe();
-      toast.success('Account created!');
-      router.push(plan ? `/dashboard/upgrade?plan=${plan}` : '/dashboard');
+
+      // If a payment was completed before registration, verify it now
+      const pending = sessionStorage.getItem('pending_payment');
+      if (pending) {
+        try {
+          const payment = JSON.parse(pending);
+          await paymentsApi.verifyPayment(payment);
+          sessionStorage.removeItem('pending_payment');
+          toast.success(`Account created & ${payment.plan} plan activated!`);
+        } catch {
+          toast.success('Account created! Please upgrade from your dashboard.');
+        }
+      } else {
+        toast.success('Account created!');
+      }
+
+      router.push('/dashboard');
     } catch {
       toast.error('Registration failed. Email may already exist.');
     } finally {
