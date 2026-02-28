@@ -24,6 +24,7 @@ type RegisterForm = z.infer<typeof schema>;
 function RegisterForm() {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') ?? 'candidate';
+  const plan = searchParams.get('plan');
   const { fetchMe } = useAuthStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ function RegisterForm() {
       localStorage.setItem('refreshToken', res.data.refreshToken);
       await fetchMe();
       toast.success('Account created!');
-      router.push('/dashboard');
+      router.push(plan ? `/dashboard/upgrade?plan=${plan}` : '/dashboard');
     } catch {
       toast.error('Registration failed. Email may already exist.');
     } finally {
