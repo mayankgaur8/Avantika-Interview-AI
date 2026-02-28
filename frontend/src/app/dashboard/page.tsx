@@ -134,7 +134,18 @@ export default function DashboardPage() {
         </nav>
         <div className="p-4 border-t border-white/10">
           <div className="text-xs text-slate-500 mb-1">{user?.email}</div>
-          <div className="text-xs font-medium text-slate-300 capitalize mb-3">{user?.role}</div>
+          <div className="text-xs font-medium text-slate-300 capitalize mb-1">{user?.role}</div>
+          <div className="mb-3">
+            {user?.plan === 'pro' && (
+              <span className="text-xs bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full font-medium">⚡ Pro</span>
+            )}
+            {user?.plan === 'enterprise' && (
+              <span className="text-xs bg-orange-600/30 text-orange-300 border border-orange-500/40 px-2 py-0.5 rounded-full font-medium">🏢 Enterprise</span>
+            )}
+            {(!user?.plan || user.plan === 'free') && (
+              <span className="text-xs bg-slate-700/50 text-slate-400 border border-slate-600/40 px-2 py-0.5 rounded-full font-medium">Free</span>
+            )}
+          </div>
           <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-400 transition">
             Sign out →
           </button>
