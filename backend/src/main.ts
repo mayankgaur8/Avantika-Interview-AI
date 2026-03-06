@@ -64,7 +64,7 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
-  const port = config.get<number>('port') ?? 3001;
+  const port = process.env.PORT || config.get<number>('port') || 3001;
   await app.listen(port);
   logger.log(`🚀 AI Interview Bot API running on http://localhost:${port}/api`);
   logger.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
