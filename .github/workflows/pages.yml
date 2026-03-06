@@ -1,0 +1,116 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 1
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site/docs
+
+          cp -R docs/. _site/docs/
+          cp README.md _site/README.md
+
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Avantika Interview AI</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 40px 20px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                background: #0f172a;
+                color: #e2e8f0;
+              }
+              .container {
+                max-width: 860px;
+                margin: 0 auto;
+              }
+              a {
+                color: #60a5fa;
+                text-decoration: none;
+              }
+              a:hover {
+                text-decoration: underline;
+              }
+              .card {
+                border: 1px solid #334155;
+                border-radius: 12px;
+                padding: 16px;
+                margin: 12px 0;
+                background: #111827;
+              }
+            </style>
+          </head>
+          <body>
+            <main class="container">
+              <h1>Avantika Interview AI</h1>
+              <p>Project documentation for the AI interview platform.</p>
+              <div class="card">
+                <a href="./README.md">README</a>
+              </div>
+              <div class="card">
+                <a href="./docs/ARCHITECTURE.md">Architecture</a>
+              </div>
+              <div class="card">
+                <a href="./docs/API_CONTRACTS.md">API Contracts</a>
+              </div>
+              <div class="card">
+                <a href="./docs/DB_SCHEMA.md">DB Schema</a>
+              </div>
+              <div class="card">
+                <a href="./docs/SEQUENCE_FLOWS.md">Sequence Flows</a>
+              </div>
+              <div class="card">
+                <a href="./docs/MVP_ROADMAP.md">MVP Roadmap</a>
+              </div>
+            </main>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
