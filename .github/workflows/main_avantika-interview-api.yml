@@ -34,6 +34,9 @@ jobs:
       - name: Build backend
         run: npm run build
 
+      - name: Prune dev dependencies
+        run: npm prune --omit=dev
+
       - name: Prepare deployment package
         run: |
           mkdir -p ../deploy
@@ -70,8 +73,12 @@ jobs:
 
       - name: Deploy with Azure CLI
         run: |
+          set -euxo pipefail
           az version
-          RG="$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)"
+          RG="$(az webapp show --name "${APP_NAME}" --query "resourceGroup" -o tsv || true)"
+          if [ -z "${RG}" ]; then
+            RG="$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv || true)"
+          fi
           if [ -z "${RG}" ]; then
             echo "Failed to find resource group for ${APP_NAME}"
             exit 1
