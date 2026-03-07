@@ -84,13 +84,26 @@ jobs:
             exit 1
           fi
 
+          # Keep deployment deterministic: use prebuilt artifact and disable server-side Oryx build.
+          az webapp config appsettings set \
+            --resource-group "${RG}" \
+            --name "${APP_NAME}" \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITE_RUN_FROM_PACKAGE=1
+
+          az webapp config set \
+            --resource-group "${RG}" \
+            --name "${APP_NAME}" \
+            --startup-file "node dist/main.js"
+
           cd backend-deploy
           zip -r ../deploy.zip ./*
           cd ..
 
-          az webapp deploy \
+          az webapp deployment source config-zip \
             --resource-group "${RG}" \
             --name "${APP_NAME}" \
-            --src-path deploy.zip \
-            --type zip \
-            --restart true
+            --src deploy.zip
+
+          az webapp restart \
+            --resource-group "${RG}" \
+            --name "${APP_NAME}"
