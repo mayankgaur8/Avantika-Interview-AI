@@ -84,7 +84,7 @@ export class PanelController {
     @Body() dto: CreatePanelSessionDto,
     @Request() req: RequestWithUser,
   ) {
-    return this.panelService.createSession(req.user.id, dto);
+    return this.panelService.createSession(req.user.id, dto, req.user);
   }
 
   @Get('sessions')
