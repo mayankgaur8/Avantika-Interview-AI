@@ -41,11 +41,16 @@ jobs:
           cp package.json ../artifact/package.json
           cp package-lock.json ../artifact/package-lock.json
 
+      - name: Zip artifact
+        run: |
+          cd ../artifact
+          zip -r ../deploy.zip .
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-artifact
-          path: artifact
+          path: deploy.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,7 +61,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-artifact
-          path: backend-artifact
+          path: .
 
       - name: Azure Login
         uses: azure/login@v2
@@ -69,4 +74,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: avantika-interview-api
-          package: ./backend-artifact
+          package: deploy.zip
