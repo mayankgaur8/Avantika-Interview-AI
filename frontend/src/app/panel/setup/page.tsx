@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -43,7 +43,26 @@ const PHASES = [
 
 export default function PanelSetupPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, fetchMe } = useAuthStore();
+  const [authReady, setAuthReady] = useState(false);
+
+  // Restore session on page load (authStore does not persist user, only accessToken)
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) {
+      router.replace('/login?redirect=/panel/setup');
+      return;
+    }
+    if (isAuthenticated && user) {
+      setAuthReady(true);
+      return;
+    }
+    fetchMe().then(() => setAuthReady(true)).catch(() => {
+      router.replace('/login?redirect=/panel/setup');
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const planLimits = getPlanLimits(user?.plan);
 
   const [track, setTrack] = useState('');
@@ -52,6 +71,14 @@ export default function PanelSetupPage() {
   const [difficulty, setDifficulty] = useState<'Normal' | 'Hard'>('Normal');
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-sm animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   const canStart = track && experience && role;
 
