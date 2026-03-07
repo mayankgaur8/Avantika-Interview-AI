@@ -61,7 +61,7 @@ jobs:
 
       - name: Deploy to Azure Web App (OIDC)
         id: deploy_oidc
-        if: steps.azure_login.outcome == 'success'
+        if: ${{ steps.azure_login.outcome == 'success' }}
         continue-on-error: true
         uses: azure/webapps-deploy@v3
         with:
@@ -70,7 +70,7 @@ jobs:
 
       - name: Deploy to Azure Web App (Publish Profile fallback)
         id: deploy_publish
-        if: steps.azure_login.outcome != 'success' || steps.deploy_oidc.outcome != 'success'
+        if: ${{ steps.azure_login.outcome != 'success' || steps.deploy_oidc.outcome != 'success' }}
         continue-on-error: true
         uses: azure/webapps-deploy@v3
         with:
@@ -79,7 +79,7 @@ jobs:
           package: release.zip
 
       - name: Fail with auth guidance
-        if: steps.deploy_oidc.outcome != 'success' && steps.deploy_publish.outcome != 'success'
+        if: ${{ steps.deploy_oidc.outcome != 'success' && steps.deploy_publish.outcome != 'success' }}
         run: |
           echo "Azure deployment failed via both OIDC and publish-profile fallback."
           echo "Add one of these auth methods in GitHub repository secrets:"
