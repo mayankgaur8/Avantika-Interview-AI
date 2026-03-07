@@ -99,12 +99,17 @@ export default function PanelSetupPage() {
       toast.success('Panel session created! Starting warm-up...');
       router.push(`/panel/${data.id as string}`);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
-        // Plan restriction — show upgrade modal instead of redirecting
-        setShowUpgrade(true);
-      } else if (axios.isAxiosError(err) && err.response?.status === 401) {
-        // Full page reload so no stale toasts carry over to the login page
-        window.location.href = '/login';
+      console.error('[Panel Setup] createSession error:', err);
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        console.error('[Panel Setup] HTTP status:', status, 'body:', err.response?.data);
+        if (status === 403) {
+          setShowUpgrade(true);
+        } else if (status === 401) {
+          window.location.href = '/login';
+        } else {
+          toast.error(`Failed to create panel session (${status ?? 'network error'}). Please try again.`);
+        }
       } else {
         toast.error('Failed to create panel session. Please try again.');
       }
