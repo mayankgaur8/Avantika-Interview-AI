@@ -38,6 +38,7 @@ jobs:
         run: |
           mkdir -p ../deploy
           cp -r dist ../deploy/dist
+          cp -r node_modules ../deploy/node_modules
           cp package.json ../deploy/package.json
           cp package-lock.json ../deploy/package-lock.json
 
@@ -50,6 +51,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      APP_NAME: avantika-interview-api
 
     steps:
       - name: Download backend artifact
@@ -65,8 +68,22 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID || secrets.AZUREAPPSERVICE_TENANTID_919845CEED244D51B52977402C32A27E || secrets.AZUREAPPSERVICE_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4BB9B6EFBAB84AC0B316D1DF066A84BE || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: avantika-interview-api
-          package: ./backend-deploy
+      - name: Deploy with Azure CLI
+        run: |
+          az version
+          RG="$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)"
+          if [ -z "${RG}" ]; then
+            echo "Failed to find resource group for ${APP_NAME}"
+            exit 1
+          fi
+
+          cd backend-deploy
+          zip -r ../deploy.zip ./*
+          cd ..
+
+          az webapp deploy \
+            --resource-group "${RG}" \
+            --name "${APP_NAME}" \
+            --src-path deploy.zip \
+            --type zip \
+            --restart true
