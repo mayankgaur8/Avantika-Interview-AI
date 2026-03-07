@@ -42,8 +42,7 @@ jobs:
           mkdir -p ../deploy
           cp -r dist ../deploy/dist
           cp -r node_modules ../deploy/node_modules
-          cp package.json ../deploy/package.json
-          cp package-lock.json ../deploy/package-lock.json
+          printf "[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false\n" > ../deploy/.deployment
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
@@ -96,7 +95,7 @@ jobs:
             --startup-file "node dist/main.js"
 
           cd backend-deploy
-          zip -r ../deploy.zip ./*
+          zip -r ../deploy.zip .
           cd ..
 
           az webapp deployment source config-zip \
