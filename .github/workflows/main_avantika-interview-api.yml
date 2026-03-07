@@ -50,14 +50,34 @@ jobs:
           path: .
 
       - name: Azure Login
+        id: azure_login
+        continue-on-error: true
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4BC9C7C9BDDC4E8D87E57131BC7138A2 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_919845CEED244D51B52977402C32A27E }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4BB9B6EFBAB84AC0B316D1DF066A84BE }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4BC9C7C9BDDC4E8D87E57131BC7138A2 || secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_919845CEED244D51B52977402C32A27E || secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4BB9B6EFBAB84AC0B316D1DF066A84BE || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure Web App (OIDC)
+        if: steps.azure_login.outcome == 'success'
         uses: azure/webapps-deploy@v3
         with:
           app-name: avantika-interview-api
           package: .
+
+      - name: Deploy to Azure Web App (Publish Profile fallback)
+        if: steps.azure_login.outcome != 'success' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE != ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: avantika-interview-api
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
+
+      - name: Fail with auth guidance
+        if: steps.azure_login.outcome != 'success' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE == ''
+        run: |
+          echo "Azure OIDC login failed and AZURE_WEBAPP_PUBLISH_PROFILE is not configured."
+          echo "Add one of these auth methods in GitHub repository secrets:"
+          echo "1) OIDC: AZUREAPPSERVICE_CLIENTID*, AZUREAPPSERVICE_TENANTID*, AZUREAPPSERVICE_SUBSCRIPTIONID*"
+          echo "2) Publish Profile: AZURE_WEBAPP_PUBLISH_PROFILE"
+          exit 1
