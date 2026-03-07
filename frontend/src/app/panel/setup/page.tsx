@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import { panelApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { getPlanLimits, UPGRADE_MESSAGES } from '@/lib/planConfig';
@@ -70,9 +71,16 @@ export default function PanelSetupPage() {
       });
       toast.success('Panel session created! Starting warm-up...');
       router.push(`/panel/${data.id as string}`);
-    } catch {
-      toast.error('Failed to create panel session. Please log in.');
-      router.push('/login');
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        // Plan restriction — show upgrade modal instead of redirecting
+        setShowUpgrade(true);
+      } else if (axios.isAxiosError(err) && err.response?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+        router.push('/login');
+      } else {
+        toast.error('Failed to create panel session. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
