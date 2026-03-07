@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import {
@@ -86,6 +86,28 @@ export class InterviewsService {
     candidate: User,
   ): Promise<InterviewSession> {
     const template = await this.getTemplateById(dto.templateId);
+
+    // Enforce monthly interview limit based on plan
+    const monthlyLimit =
+      candidate.plan === 'enterprise' ? Infinity :
+      candidate.plan === 'pro' ? 30 : 3;
+
+    if (monthlyLimit !== Infinity) {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const monthCount = await this.sessionsRepo.count({
+        where: {
+          candidateId: candidate.id,
+          createdAt: MoreThanOrEqual(startOfMonth),
+        },
+      });
+      if (monthCount >= monthlyLimit) {
+        throw new ForbiddenException(
+          `Monthly interview limit of ${monthlyLimit} reached for the ${candidate.plan} plan. Please upgrade to continue.`,
+        );
+      }
+    }
 
     // Check for existing in-progress session
     const existing = await this.sessionsRepo.findOne({

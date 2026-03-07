@@ -7,6 +7,8 @@ import { Logo } from '@/components/Logo';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { interviewsApi, panelApi } from '@/lib/api';
+import { getPlanLimits, UPGRADE_MESSAGES } from '@/lib/planConfig';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 interface Template {
   id: string;
@@ -24,6 +26,7 @@ interface Session {
   interviewType: string;
   percentageScore?: number;
   completedAt?: string;
+  createdAt?: string;
   template?: { name: string; role: string };
   reportUrl?: string;
   isIntegrityFlagged?: boolean;
@@ -54,6 +57,15 @@ const STATUS_COLOR: Record<string, string> = {
   flagged: 'bg-red-900/30 text-red-300',
 };
 
+function getThisMonthCount(sessions: Session[]): number {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return sessions.filter((s) => {
+    const created = s.createdAt ? new Date(s.createdAt) : null;
+    return created && created >= startOfMonth;
+  }).length;
+}
+
 export default function DashboardPage() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
@@ -61,6 +73,9 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [panelSessions, setPanelSessions] = useState<PanelSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [upgradeModal, setUpgradeModal] = useState<{ feature: string; message: string } | null>(null);
+
+  const planLimits = getPlanLimits(user?.plan);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -88,12 +103,31 @@ export default function DashboardPage() {
   };
 
   const startInterview = async (templateId: string) => {
+    const monthCount = getThisMonthCount(sessions);
+    if (monthCount >= planLimits.interviewsPerMonth) {
+      setUpgradeModal({
+        feature: 'Monthly Interview Limit Reached',
+        message: `You've used all ${planLimits.interviewsPerMonth} interviews for this month on the ${user?.plan ?? 'Free'} plan. Upgrade to get more.`,
+      });
+      return;
+    }
     try {
       const { data } = await interviewsApi.startSession(templateId);
       router.push(`/interview/${data.id}`);
     } catch {
       toast.error('Failed to start interview');
     }
+  };
+
+  const handlePanelClick = () => {
+    if (!planLimits.panelInterview) {
+      setUpgradeModal({
+        feature: 'AI Panel Interview',
+        message: UPGRADE_MESSAGES.panelInterview ?? 'Panel interviews require a Pro or Enterprise plan.',
+      });
+      return;
+    }
+    router.push('/panel/setup');
   };
 
   const handleLogout = async () => {
@@ -109,13 +143,18 @@ export default function DashboardPage() {
     );
   }
 
+  const monthCount = getThisMonthCount(sessions);
+  const monthLimit = planLimits.interviewsPerMonth;
+  const isUnlimited = monthLimit === Infinity;
+  const usagePercent = isUnlimited ? 0 : Math.min(100, (monthCount / monthLimit) * 100);
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-56 bg-slate-900 border-r border-white/10 flex flex-col">
         <div className="p-5 border-b border-white/10">
-            <Logo size={28} />
-          </div>
+          <Logo size={28} />
+        </div>
         <nav className="flex-1 p-4 space-y-1">
           {[
             { label: '🏠 Dashboard', href: '/dashboard', active: true },
@@ -171,7 +210,7 @@ export default function DashboardPage() {
           <div className="mb-6 bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border border-indigo-600/30 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
             <div>
               <span className="text-sm font-semibold text-white">You're on the Free plan</span>
-              <span className="text-sm text-slate-400 ml-2">— Upgrade to unlock all interview tracks, panel mode, and more.</span>
+              <span className="text-sm text-slate-400 ml-2">— Upgrade to unlock panel interviews, all tracks, voice, coding sandbox and more.</span>
             </div>
             <Link
               href="/dashboard/upgrade"
@@ -201,11 +240,43 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Monthly usage bar (Free & Pro) */}
+        {!isUnlimited && (
+          <div className="mb-8 bg-white/5 border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-300">Interviews this month</span>
+              <span className={`text-sm font-bold ${monthCount >= monthLimit ? 'text-red-400' : 'text-white'}`}>
+                {monthCount} / {monthLimit}
+              </span>
+            </div>
+            <div className="w-full bg-slate-700/50 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all ${usagePercent >= 100 ? 'bg-red-500' : usagePercent >= 75 ? 'bg-yellow-500' : 'bg-indigo-500'}`}
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+            {monthCount >= monthLimit && (
+              <p className="text-xs text-red-400 mt-2">
+                Limit reached.{' '}
+                <Link href="/dashboard/upgrade" className="underline hover:text-red-300">Upgrade your plan</Link>
+                {' '}to start more interviews.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Panel Interview CTA */}
         <section className="mb-10">
           <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-600/30 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold mb-1">🎙️ AI Panel Interview</h2>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-bold">🎙️ AI Panel Interview</h2>
+                {!planLimits.panelInterview && (
+                  <span className="text-xs bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full font-semibold">
+                    ⚡ Pro
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-400 max-w-md">
                 Simulate a real interview with 3 expert panelists — Technical Lead, Coding Evaluator &amp; SQL Evaluator.
                 Get adaptive questions, follow-ups, and a personalised report.
@@ -222,12 +293,16 @@ export default function DashboardPage() {
                 <span>📊 Report</span>
               </div>
             </div>
-            <Link
-              href="/panel/setup"
-              className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition whitespace-nowrap"
+            <button
+              onClick={handlePanelClick}
+              className={`shrink-0 font-semibold px-6 py-3 rounded-xl transition whitespace-nowrap ${
+                planLimits.panelInterview
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-white/10 border border-white/20 text-slate-300 hover:bg-white/15'
+              }`}
             >
-              Start Panel Interview →
-            </Link>
+              {planLimits.panelInterview ? 'Start Panel Interview →' : '🔒 Upgrade to Unlock'}
+            </button>
           </div>
 
           {/* Recent panel sessions */}
@@ -265,38 +340,46 @@ export default function DashboardPage() {
             <div className="text-slate-500 text-sm">No templates available yet.</div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.map((t) => (
-                <div key={t.id} className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col gap-3 hover:border-indigo-500/50 transition">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-semibold text-sm">{t.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{t.role}</div>
+              {templates.map((t) => {
+                const atLimit = !isUnlimited && monthCount >= monthLimit;
+                return (
+                  <div key={t.id} className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col gap-3 hover:border-indigo-500/50 transition">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-sm">{t.name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{t.role}</div>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${DIFFICULTY_COLOR[t.difficulty] ?? 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                        {t.difficulty}
+                      </span>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${DIFFICULTY_COLOR[t.difficulty] ?? 'bg-slate-700 text-slate-300 border-slate-600'}`}>
-                      {t.difficulty}
-                    </span>
+                    <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                      <span>⏱ {t.timeLimitMinutes} min</span>
+                      <span>🎯 Pass: {t.passingScorePercent}%</span>
+                      {Object.entries(t.sectionConfig).map(([type, cfg]) => (
+                        <span key={type} className="capitalize">{type}: {cfg.count}q</span>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => startInterview(t.id)}
+                      disabled={atLimit}
+                      className={`mt-auto w-full text-sm font-medium py-2 rounded-lg transition ${
+                        atLimit
+                          ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/10'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      }`}
+                    >
+                      {atLimit ? '🔒 Limit reached — Upgrade' : 'Start Interview →'}
+                    </button>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                    <span>⏱ {t.timeLimitMinutes} min</span>
-                    <span>🎯 Pass: {t.passingScorePercent}%</span>
-                    {Object.entries(t.sectionConfig).map(([type, cfg]) => (
-                      <span key={type} className="capitalize">{type}: {cfg.count}q</span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => startInterview(t.id)}
-                    className="mt-auto w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2 rounded-lg transition"
-                  >
-                    Start Interview →
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
 
         {/* Recent Sessions */}
-        <section>
+        <section id="reports">
           <h2 className="text-lg font-semibold mb-4">Recent Sessions</h2>
           {sessions.length === 0 ? (
             <div className="text-slate-500 text-sm">No sessions yet. Start your first interview!</div>
@@ -346,6 +429,17 @@ export default function DashboardPage() {
           )}
         </section>
       </main>
+
+      {/* Upgrade Modal */}
+      {upgradeModal && (
+        <UpgradeModal
+          isOpen={true}
+          onClose={() => setUpgradeModal(null)}
+          featureName={upgradeModal.feature}
+          message={upgradeModal.message}
+          requiredPlan="pro"
+        />
+      )}
     </div>
   );
 }

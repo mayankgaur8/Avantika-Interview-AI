@@ -68,6 +68,14 @@ export class PanelService {
       difficulty: 'Normal' | 'Hard';
     },
   ): Promise<PanelSession> {
+    // Panel interviews require Pro or Enterprise plan
+    const user = await this.userRepo.findOne({ where: { id: candidateId } });
+    if (!user || user.plan === 'free') {
+      throw new ForbiddenException(
+        'Panel interviews require a Pro or Enterprise plan. Please upgrade to continue.',
+      );
+    }
+
     const session = this.repo.create({
       candidateId,
       track: dto.track,

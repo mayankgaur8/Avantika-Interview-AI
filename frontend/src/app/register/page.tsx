@@ -21,9 +21,33 @@ const schema = z.object({
 
 type RegisterForm = z.infer<typeof schema>;
 
+const PLAN_META: Record<string, { label: string; icon: string; color: string; desc: string }> = {
+  free: {
+    label: 'Free',
+    icon: '🆓',
+    color: 'border-slate-600/60 bg-slate-800/40',
+    desc: '3 interviews/month · 2 tracks · Community support',
+  },
+  pro: {
+    label: 'Pro',
+    icon: '⚡',
+    color: 'border-indigo-500/60 bg-indigo-900/20',
+    desc: '30 interviews/month · All tracks · Panel mode · Voice · Coding sandbox',
+  },
+  enterprise: {
+    label: 'Enterprise',
+    icon: '🏢',
+    color: 'border-orange-500/60 bg-orange-900/20',
+    desc: 'Unlimited interviews · All Pro features · Recruiter dashboard · SSO',
+  },
+};
+
 function RegisterForm() {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') ?? 'candidate';
+  const planParam = searchParams.get('plan') ?? 'free';
+  const plan = PLAN_META[planParam] ? planParam : 'free';
+
   const { fetchMe } = useAuthStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -69,6 +93,8 @@ function RegisterForm() {
     }
   };
 
+  const meta = PLAN_META[plan];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -78,6 +104,21 @@ function RegisterForm() {
           <p className="text-slate-400 text-sm capitalize">
             Registering as a <strong className="text-indigo-400">{role}</strong>
           </p>
+        </div>
+
+        {/* Selected plan banner */}
+        <div className={`rounded-xl border px-4 py-3 mb-5 flex items-center gap-3 ${meta.color}`}>
+          <span className="text-2xl">{meta.icon}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-white">{meta.label} Plan selected</div>
+            <div className="text-xs text-slate-400 mt-0.5 truncate">{meta.desc}</div>
+          </div>
+          <Link
+            href="/pricing"
+            className="text-xs text-indigo-400 hover:text-indigo-300 shrink-0 transition"
+          >
+            Change
+          </Link>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">

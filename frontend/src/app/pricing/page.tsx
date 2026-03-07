@@ -153,7 +153,7 @@ export default function PricingPage() {
   const router = useRouter();
 
   const handlePaidPlan = async (planId: string) => {
-    if (planId === 'free') { router.push('/register'); return; }
+    if (planId === 'free') { router.push('/register?plan=free'); return; }
     if (planId === 'enterprise') { window.location.href = 'mailto:sales@interviewai.dev'; return; }
     setPaying(planId);
     try {

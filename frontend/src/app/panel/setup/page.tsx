@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { panelApi } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { getPlanLimits, UPGRADE_MESSAGES } from '@/lib/planConfig';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 const TRACKS = [
   'Java', 'Spring Boot', 'Microservices', 'Kafka', 'React', 'Node.js',
@@ -38,16 +42,24 @@ const PHASES = [
 
 export default function PanelSetupPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const planLimits = getPlanLimits(user?.plan);
+
   const [track, setTrack] = useState('');
   const [experience, setExperience] = useState('');
   const [role, setRole] = useState('');
   const [difficulty, setDifficulty] = useState<'Normal' | 'Hard'>('Normal');
   const [loading, setLoading] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const canStart = track && experience && role;
 
   const handleStart = async () => {
     if (!canStart) return;
+    if (!planLimits.panelInterview) {
+      setShowUpgrade(true);
+      return;
+    }
     setLoading(true);
     try {
       const { data } = await panelApi.createSession({
@@ -78,9 +90,34 @@ export default function PanelSetupPage() {
         </button>
         <span className="text-white/20">|</span>
         <span className="text-sm font-semibold">🎙️ Panel Interview — Setup</span>
+        {!planLimits.panelInterview && (
+          <span className="ml-auto text-xs bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full font-semibold">
+            ⚡ Pro feature
+          </span>
+        )}
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-12 grid lg:grid-cols-2 gap-12">
+      {/* Plan gate banner */}
+      {!planLimits.panelInterview && (
+        <div className="max-w-5xl mx-auto px-6 pt-8">
+          <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/40 rounded-xl px-6 py-5 flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-bold text-white mb-1">Panel interviews require a Pro or Enterprise plan</div>
+              <div className="text-xs text-slate-400">
+                You are on the Free plan. Upgrade to simulate a real panel interview with 3 AI panelists, coding rounds, SQL rounds and a detailed report.
+              </div>
+            </div>
+            <Link
+              href="/dashboard/upgrade"
+              className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition"
+            >
+              Upgrade to Pro →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-5xl mx-auto px-6 py-12 grid lg:grid-cols-2 gap-12 ${!planLimits.panelInterview ? 'opacity-50 pointer-events-none select-none' : ''}`}>
         {/* Left — config form */}
         <div className="space-y-8">
           <div>
@@ -244,6 +281,15 @@ export default function PanelSetupPage() {
           </div>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        featureName="AI Panel Interview"
+        message={UPGRADE_MESSAGES.panelInterview ?? 'Panel interviews require a Pro or Enterprise plan.'}
+        requiredPlan="pro"
+      />
     </div>
   );
 }
