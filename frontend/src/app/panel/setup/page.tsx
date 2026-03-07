@@ -103,8 +103,8 @@ export default function PanelSetupPage() {
         // Plan restriction — show upgrade modal instead of redirecting
         setShowUpgrade(true);
       } else if (axios.isAxiosError(err) && err.response?.status === 401) {
-        toast.error('Session expired. Please log in again.');
-        router.push('/login');
+        // Full page reload so no stale toasts carry over to the login page
+        window.location.href = '/login';
       } else {
         toast.error('Failed to create panel session. Please try again.');
       }
