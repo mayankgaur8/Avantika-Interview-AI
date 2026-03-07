@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
@@ -33,7 +33,12 @@ async function bootstrap() {
   });
 
   // Global prefix
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: '', method: RequestMethod.GET },
+      { path: 'health', method: RequestMethod.GET },
+    ],
+  });
 
   // Validation
   app.useGlobalPipes(
@@ -65,9 +70,9 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || config.get<number>('port') || 3001;
-  await app.listen(port);
-  logger.log(`🚀 AI Interview Bot API running on http://localhost:${port}/api`);
-  logger.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`🚀 AI Interview Bot API running on port ${port}`);
+  logger.log(`📚 Swagger UI: /api/docs`);
 }
 
 void bootstrap();
