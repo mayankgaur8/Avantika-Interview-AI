@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const normalizeApiBase = (base: string): string => {
+  const trimmed = base.replace(/\/+$/, '');
+  return /\/api(?:\/|$)/.test(trimmed) ? trimmed : `${trimmed}/api`;
+};
+
+const API_BASE = normalizeApiBase(
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
+);
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -125,4 +132,20 @@ export const panelApi = {
     api.patch(`/panel/sessions/${sessionId}/skip`),
   abandonInterview: (sessionId: string) =>
     api.patch(`/panel/sessions/${sessionId}/abandon`),
+};
+
+export const getApiErrorMessage = (
+  error: unknown,
+  fallback: string,
+): string => {
+  if (axios.isAxiosError(error)) {
+    const responseMessage = error.response?.data?.message;
+    if (Array.isArray(responseMessage)) {
+      return responseMessage[0] ?? fallback;
+    }
+    if (typeof responseMessage === 'string' && responseMessage.trim()) {
+      return responseMessage;
+    }
+  }
+  return fallback;
 };

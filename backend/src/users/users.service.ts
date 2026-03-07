@@ -16,23 +16,31 @@ export class UsersService {
     private readonly usersRepo: Repository<User>,
   ) {}
 
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const existing = await this.usersRepo.findOne({
-      where: { email: createUserDto.email },
-    });
+    const normalizedEmail = this.normalizeEmail(createUserDto.email);
+    const existing = await this.findByEmail(normalizedEmail);
     if (existing) {
       throw new ConflictException('User with this email already exists');
     }
     const { password, ...rest } = createUserDto;
     const user = this.usersRepo.create({
       ...rest,
+      email: normalizedEmail,
       passwordHash: password,
     });
     return this.usersRepo.save(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepo.findOne({ where: { email } });
+    const normalizedEmail = this.normalizeEmail(email);
+    return this.usersRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalizedEmail })
+      .getOne();
   }
 
   async findById(id: string): Promise<User> {

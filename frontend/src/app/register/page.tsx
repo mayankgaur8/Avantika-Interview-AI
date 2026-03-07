@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { authApi, paymentsApi } from '@/lib/api';
+import { authApi, getApiErrorMessage, paymentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Logo } from '@/components/Logo';
 
@@ -37,7 +37,11 @@ function RegisterForm() {
   const onSubmit = async (data: RegisterForm) => {
     setLoading(true);
     try {
-      const res = await authApi.register({ ...data, role });
+      const res = await authApi.register({
+        ...data,
+        email: data.email.trim().toLowerCase(),
+        role,
+      });
       localStorage.setItem('accessToken', res.data.accessToken);
       localStorage.setItem('refreshToken', res.data.refreshToken);
       await fetchMe();
@@ -58,8 +62,8 @@ function RegisterForm() {
       }
 
       router.push('/dashboard');
-    } catch {
-      toast.error('Registration failed. Email may already exist.');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Registration failed.'));
     } finally {
       setLoading(false);
     }

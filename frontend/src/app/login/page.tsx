@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import { getApiErrorMessage } from '@/lib/api';
 import { Logo } from '@/components/Logo';
 
 const schema = z.object({
@@ -32,12 +33,12 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
     try {
-      await login(data.email, data.password);
+      await login(data.email.trim().toLowerCase(), data.password);
       toast.success('Welcome back!');
       const redirect = searchParams.get('redirect');
       router.push(redirect ?? '/dashboard');
-    } catch {
-      toast.error('Invalid credentials. Please try again.');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Invalid credentials. Please try again.'));
     } finally {
       setLoading(false);
     }
