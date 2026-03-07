@@ -19,13 +19,17 @@ export interface RubricScore {
 @Injectable()
 export class AiEvaluatorService {
   private readonly logger = new Logger(AiEvaluatorService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: OpenAI | null;
   private readonly model: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('openai.apiKey') ?? '',
-    });
+    const apiKey = this.configService.get<string>('openai.apiKey') ?? '';
+    this.openai = apiKey ? new OpenAI({ apiKey }) : null;
+    if (!this.openai) {
+      this.logger.warn(
+        'OPENAI_API_KEY is not configured. AI scoring will use fallback mode.',
+      );
+    }
     this.model = this.configService.get<string>('openai.model') ?? 'gpt-4o';
   }
 
@@ -69,6 +73,9 @@ Respond ONLY with a valid JSON array matching this schema, nothing else:
 Be objective. Award partial credit where justified. Do not award more than maxPoints per criterion.`;
 
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [{ role: 'user', content: prompt }],
@@ -109,6 +116,9 @@ Question: ${questionText}
 Answer: ${candidateAnswer}
 Respond as JSON: {"criterion":"Overall","score":number,"maxPoints":10,"feedback":"string"}`;
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [{ role: 'user', content: prompt }],

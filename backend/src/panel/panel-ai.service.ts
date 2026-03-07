@@ -66,13 +66,17 @@ function pickSubtopic(phase: PanelPhase, questionNumber: number): string {
 @Injectable()
 export class PanelAiService {
   private readonly logger = new Logger(PanelAiService.name);
-  private readonly openai: OpenAI;
+  private readonly openai: OpenAI | null;
   private readonly model: string;
 
   constructor(private readonly cfg: ConfigService) {
-    this.openai = new OpenAI({
-      apiKey: cfg.get<string>('openai.apiKey') ?? '',
-    });
+    const apiKey = cfg.get<string>('openai.apiKey') ?? '';
+    this.openai = apiKey ? new OpenAI({ apiKey }) : null;
+    if (!this.openai) {
+      this.logger.warn(
+        'OPENAI_API_KEY is not configured. Panel AI will use fallback mode.',
+      );
+    }
     this.model = cfg.get<string>('openai.model') ?? 'gpt-4o';
   }
 
@@ -180,6 +184,9 @@ Respond in STRICT JSON:
 }`;
 
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [
@@ -253,6 +260,9 @@ Respond ONLY in valid JSON:
 }`;
 
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [{ role: 'user', content: prompt }],
@@ -295,6 +305,9 @@ Score 0–10 and provide brief feedback. JSON only:
 {"score": <0-10>, "feedback": "1-2 sentences"}`;
 
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [{ role: 'user', content: prompt }],
@@ -391,6 +404,9 @@ Respond ONLY in valid JSON matching this EXACT schema:
 }`;
 
     try {
+      if (!this.openai) {
+        throw new Error('OpenAI not configured');
+      }
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: [{ role: 'user', content: prompt }],

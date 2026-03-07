@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,19 +26,36 @@ const PLAN_PRICES: Record<PlanType, Record<BillingCycle, number>> = {
 
 @Injectable()
 export class PaymentsService {
-  private razorpay: Razorpay;
+  private readonly logger = new Logger(PaymentsService.name);
+  private readonly razorpay: Razorpay | null;
 
   constructor(
     private readonly config: ConfigService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {
+    const keyId = this.config.get<string>('razorpay.keyId') ?? '';
+    const keySecret = this.config.get<string>('razorpay.keySecret') ?? '';
+
+    if (!keyId || !keySecret) {
+      this.logger.warn(
+        'Razorpay keys are not configured. Payment endpoints will be unavailable until keys are set.',
+      );
+      this.razorpay = null;
+      return;
+    }
+
     this.razorpay = new Razorpay({
-      key_id: this.config.get<string>('razorpay.keyId') ?? '',
-      key_secret: this.config.get<string>('razorpay.keySecret') ?? '',
+      key_id: keyId,
+      key_secret: keySecret,
     });
   }
 
   async createOrder(dto: CreateOrderDto) {
+    if (!this.razorpay) {
+      throw new ServiceUnavailableException(
+        'Payments are not configured. Contact support.',
+      );
+    }
     const amount = PLAN_PRICES[dto.plan][dto.billing];
     const order = await this.razorpay.orders.create({
       amount,
