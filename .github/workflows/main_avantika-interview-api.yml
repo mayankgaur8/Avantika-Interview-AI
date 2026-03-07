@@ -13,6 +13,8 @@ permissions:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: avantika-interview-api
 
     steps:
       - name: Checkout
@@ -31,6 +33,11 @@ jobs:
           npm ci
           npm run build
 
+      - name: Prepare deploy zip
+        run: |
+          cd backend
+          zip -r ../deploy.zip . -x ".git/*" "node_modules/*" "test/*" ".env*"
+
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -38,8 +45,34 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_919845CEED244D51B52977402C32A27E || secrets.AZUREAPPSERVICE_TENANTID }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4BB9B6EFBAB84AC0B316D1DF066A84BE || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
-      - name: Deploy backend folder to Azure Web App
-        uses: azure/webapps-deploy@v3
+      - name: Discover resource group
+        id: rg
+        uses: azure/CLI@v2
         with:
-          app-name: avantika-interview-api
-          package: backend
+          inlineScript: |
+            RG=$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)
+            if [ -z "$RG" ]; then
+              echo "Could not find resource group for ${APP_NAME}" >&2
+              exit 1
+            fi
+            echo "resource_group=$RG" >> "$GITHUB_OUTPUT"
+
+      - name: Enable build during deployment
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp config appsettings set \
+              --resource-group "${{ steps.rg.outputs.resource_group }}" \
+              --name "${APP_NAME}" \
+              --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true ENABLE_ORYX_BUILD=true
+
+      - name: Deploy to Azure Web App (CLI)
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp deploy \
+              --resource-group "${{ steps.rg.outputs.resource_group }}" \
+              --name "${APP_NAME}" \
+              --src-path deploy.zip \
+              --type zip \
+              --restart true
