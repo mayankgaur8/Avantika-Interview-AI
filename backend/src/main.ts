@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
   const config = app.get(ConfigService);
+  const server = app.getHttpAdapter().getInstance();
 
   // Security headers
   app.use(helmet());
@@ -30,6 +31,14 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
+  // Fallback liveness routes available even if controller wiring drifts.
+  server.get('/', (_req: unknown, res: { send: (body: string) => void }) => {
+    res.send('Avantika Interview API is running');
+  });
+  server.get('/health', (_req: unknown, res: { json: (body: object) => void }) => {
+    res.json({ status: 'UP' });
   });
 
   // Global prefix
