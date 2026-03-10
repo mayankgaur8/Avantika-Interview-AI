@@ -10,6 +10,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const config = app.get(ConfigService);
   const server = app.getHttpAdapter().getInstance();
+  server.set('trust proxy', 1);
 
   // Security headers
   app.use(helmet());
