@@ -15,8 +15,13 @@ async function bootstrap() {
   app.use(helmet());
 
   // CORS — support comma-separated list of allowed origins
-  const corsOrigin = config.get<string>('cors.origin') ?? 'http://localhost:3000';
-  const allowedOrigins = corsOrigin.split(',').map((o) => o.trim());
+  const corsOrigin =
+    config.get<string>('cors.origin') ??
+    'http://localhost:3000,http://localhost:5173,https://avantika-edu-ai.vercel.app';
+  const allowedOrigins = corsOrigin
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
       if (
