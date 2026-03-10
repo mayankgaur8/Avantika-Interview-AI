@@ -8,9 +8,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   const config = app.get(ConfigService);
   const server = app.getHttpAdapter().getInstance();
-  server.set('trust proxy', 1);
 
   // Security headers
   app.use(helmet());
@@ -25,18 +25,22 @@ async function bootstrap() {
     .filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
-      if (
-        !origin ||
-        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
-        allowedOrigins.includes(origin)
-      ) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error(`Not allowed by CORS: ${origin}`), false);
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+    ],
+    optionsSuccessStatus: 204,
   });
 
   // Fallback liveness routes available even if controller wiring drifts.
