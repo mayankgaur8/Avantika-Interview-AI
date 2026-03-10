@@ -16,7 +16,7 @@ async function bootstrap() {
 
   // CORS — support comma-separated list of allowed origins
   const corsOrigin =
-    config.get<string>('cors.origin') ??
+    config.get<string>('CORS_ORIGIN') ??
     'http://localhost:3000,http://localhost:5173,https://avantika-edu-ai.vercel.app';
   const allowedOrigins = corsOrigin
     .split(',')
