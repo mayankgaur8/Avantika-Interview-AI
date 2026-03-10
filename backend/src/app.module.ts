@@ -13,6 +13,7 @@ import { ReportsModule } from './reports/reports.module';
 import { IntegrityModule } from './integrity/integrity.module';
 import { PanelModule } from './panel/panel.module';
 import { PaymentsModule } from './payments/payments.module';
+import { AssignmentsModule } from './assignments/assignments.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -61,6 +62,7 @@ import { AppService } from './app.service';
     IntegrityModule,
     PanelModule,
     PaymentsModule,
+    AssignmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
